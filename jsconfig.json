@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "es2015",
+    "baseUrl": "./",
+    "checkJs": false,
+    "ignoreDeprecations": "6.0"
+  },
+  "typeAcquisition": {
+    "enable": true,
+    "include": ["p5"]
+  },
+  "include": [
+    "**/*.js"
+  ],
+  "exclude": ["node_modules"]
+}
