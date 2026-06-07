@@ -5,6 +5,9 @@
 
 const GW = 640; // 遊戲邏輯寬度 (Game Width)
 const GH = 480; // 遊戲邏輯高度 (Game Height)
+let scaleFactor = 1; // 縮放倍率
+let offsetX = 0;     // X 軸偏移量（置中用）
+let offsetY = 0;     // Y 軸偏移量（置中用）
 
 let video;
 let handpose;
@@ -73,7 +76,8 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(GW, GH);
+  // 改為視窗大小，我們會手動縮放內容
+  createCanvas(windowWidth, windowHeight);
   
   // 1. 初始化視訊鏡頭
   video = createCapture(VIDEO);
@@ -89,14 +93,28 @@ function setup() {
   });
 }
 
+// 當視窗大小改變時，自動調整畫布
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
 function modelReady() {
   console.log("AI 影像辨識模型準備就緒！");
   isModelReady = true;
 }
 
 function draw() {
-  background(0);
+  // 計算等比例縮放比例與位移
+  scaleFactor = min(width / GW, height / GH);
+  offsetX = (width - GW * scaleFactor) / 2;
+  offsetY = (height - GH * scaleFactor) / 2;
+
+  background(0); // 繪製外圍黑邊
   
+  push();
+  translate(offsetX, offsetY); // 移動到中心
+  scale(scaleFactor);          // 套用縮放
+
   if (gameState === "START") {
     drawStartScreen();
   } else if (gameState === "RULES") {
@@ -106,32 +124,33 @@ function draw() {
   } else if (gameState === "GAMEOVER") {
     drawGameOverScreen();
   }
+  pop();
 }
 
 function drawStartScreen() {
   // 繪製背景圖並充滿畫面
-  image(bgImg, 0, 0, width, height);
+  image(bgImg, 0, 0, GW, GH);
   
   // 黑色半透明遮罩，讓文字更明顯
   fill(0, 0, 0, 100);
-  rect(0, 0, width, height);
+  rect(0, 0, GW, GH);
 
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(48);
-  text("韓文字母體感遊戲", width / 2, height / 2 - 80);
+  text("韓文字母體感遊戲", GW / 2, GH / 2 - 80);
   
   textSize(24);
-  text("請選擇學習模式", width / 2, height / 2 - 20);
+  text("請選擇學習模式", GW / 2, GH / 2 - 20);
 
   // 繪製選單按鈕
-  drawMenuButton(width / 2 - 120, height / 2 + 50, 100, 50, "子音", color(70, 130, 180));
-  drawMenuButton(width / 2 + 20, height / 2 + 50, 100, 50, "母音", color(180, 70, 70));
+  drawMenuButton(GW / 2 - 120, GH / 2 + 50, 100, 50, "子音", color(70, 130, 180));
+  drawMenuButton(GW / 2 + 20, GH / 2 + 50, 100, 50, "母音", color(180, 70, 70));
   
   if (!isModelReady) {
     fill(255, 255, 0);
     textSize(16);
-    text("AI 模型載入中，請稍候...", width / 2, height - 30);
+    text("AI 模型載入中，請稍候...", GW / 2, GH - 30);
   }
 }
 
@@ -148,17 +167,17 @@ function drawRulesScreen() {
   // 使用瀏覽器原生的 Canvas filter 屬性實現高效模糊
   // 5px 為模糊程度，數值越大越模糊
   if (drawingContext) drawingContext.filter = 'blur(5px)';
-  image(bgImg, 0, 0, width, height);
+  image(bgImg, 0, 0, GW, GH);
   if (drawingContext) drawingContext.filter = 'none'; // 繪製完背景後務必清除模糊
   pop();
 
   fill(0, 0, 0, 180);
-  rect(0, 0, width, height);
+  rect(0, 0, GW, GH);
 
   fill(255);
   textAlign(CENTER, TOP);
   textSize(36);
-  text("遊戲規則", GW / 2, 30); // 標題往上移
+  text("遊戲規則", GW / 2, 40); // 標題往上移
 
   textSize(18); // 稍微縮小字體以放入更多資訊
   textAlign(LEFT, TOP);
@@ -242,6 +261,7 @@ function drawGame() {
       drawStaticBalloon(b);
     }
     // 顯示暫停文字
+    textAlign(CENTER, CENTER);
     fill(255, 255, 0);
     textSize(48);
     text("遊戲暫停", GW / 2, GH / 2);
@@ -268,6 +288,8 @@ function drawStaticBalloon(b) {
   }
   ellipse(b.x, b.y, 60, 60);
   fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(20);
   text(b.text, b.x, b.y);
 }
 
@@ -579,36 +601,40 @@ function drawGameOverScreen() {
 }
 
 function mousePressed() {
+  // 將實際滑鼠座標轉換為遊戲邏輯座標，以免縮放後點不到按鈕
+  let mx = (mouseX - offsetX) / scaleFactor;
+  let my = (mouseY - offsetY) / scaleFactor;
+
   if (gameState === "START" && isModelReady) {
     // 檢查點擊位置
     // 子音按鈕
-    if (mouseX > GW / 2 - 120 && mouseX < GW / 2 - 20 && mouseY > GH / 2 + 50 && mouseY < GH / 2 + 100) {
+    if (mx > GW / 2 - 120 && mx < GW / 2 - 20 && my > GH / 2 + 50 && my < GH / 2 + 100) {
       startGame("CONSONANTS");
     }
     // 母音按鈕
-    if (mouseX > GW / 2 + 20 && mouseX < GW / 2 + 120 && mouseY > GH / 2 + 50 && mouseY < GH / 2 + 100) {
+    if (mx > GW / 2 + 20 && mx < GW / 2 + 120 && my > GH / 2 + 50 && my < GH / 2 + 100) {
       startGame("VOWELS");
     }
   } else if (gameState === "RULES") {
-    if (mouseX > GW / 2 - 60 && mouseX < GW / 2 + 60 && mouseY > GH - 80 && mouseY < GH - 30) {
+    if (mx > GW / 2 - 60 && mx < GW / 2 + 60 && my > GH - 80 && my < GH - 30) {
       actuallyStartGame();
     }
   } else if (gameState === "PLAYING") {
     // 檢查是否點擊右下角的「回主選單」按鈕
-    if (mouseX > GW - 120 && mouseX < GW - 10 && mouseY > GH - 50 && mouseY < GH - 10) {
+    if (mx > GW - 120 && mx < GW - 10 && my > GH - 50 && my < GH - 10) {
       gameState = "START";
     }
     // 檢查點擊「暫停/繼續」按鈕
-    if (mouseX > GW - 120 && mouseX < GW - 10 && mouseY > GH - 100 && mouseY < GH - 60) {
+    if (mx > GW - 120 && mx < GW - 10 && my > GH - 100 && my < GH - 60) {
       isPaused = !isPaused;
     }
   } else if (gameState === "GAMEOVER") {
     // 檢查點擊「返回選單」 (左邊按鈕)
-    if (mouseX > GW / 2 - 130 && mouseX < GW / 2 - 10 && mouseY > GH - 80 && mouseY < GH - 30) {
+    if (mx > GW / 2 - 130 && mx < GW / 2 - 10 && my > GH - 80 && my < GH - 30) {
       gameState = "START";
     }
     // 檢查點擊「重新開始」 (右邊按鈕)
-    if (mouseX > GW / 2 + 10 && mouseX < GW / 2 + 130 && mouseY > GH - 80 && mouseY < GH - 30) {
+    if (mx > GW / 2 + 10 && mx < GW / 2 + 130 && my > GH - 80 && my < GH - 30) {
       startGame(currentMode);
     }
   }
