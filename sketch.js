@@ -14,7 +14,7 @@ let targetY = 0;
 let isFirstDetection = true; // 用於平滑處理初始位置
 let isModelReady = false;
 let bgImg;   // 統一的韓國背景圖
-let gameState = "START"; // START, PLAYING, GAMEOVER
+let gameState = "START"; // START, RULES, PLAYING, GAMEOVER
 let gameTimer = 60; // 遊戲時長
 let lastTimeCheck = 0;
 let currentMode = ""; // CONSONANTS, VOWELS
@@ -99,6 +99,8 @@ function draw() {
   
   if (gameState === "START") {
     drawStartScreen();
+  } else if (gameState === "RULES") {
+    drawRulesScreen();
   } else if (gameState === "PLAYING") {
     drawGame();
   } else if (gameState === "GAMEOVER") {
@@ -139,6 +141,57 @@ function drawMenuButton(x, y, w, h, label, col) {
   fill(255);
   textSize(20);
   text(label, x + w / 2, y + h / 2);
+}
+
+function drawRulesScreen() {
+  push();
+  // 使用瀏覽器原生的 Canvas filter 屬性實現高效模糊
+  // 5px 為模糊程度，數值越大越模糊
+  if (drawingContext) drawingContext.filter = 'blur(5px)';
+  image(bgImg, 0, 0, width, height);
+  if (drawingContext) drawingContext.filter = 'none'; // 繪製完背景後務必清除模糊
+  pop();
+
+  fill(0, 0, 0, 180);
+  rect(0, 0, width, height);
+
+  fill(255);
+  textAlign(CENTER, TOP);
+  textSize(36);
+  text("遊戲規則", GW / 2, 30); // 標題往上移
+
+  textSize(18); // 稍微縮小字體以放入更多資訊
+  textAlign(LEFT, TOP);
+  text("1. 使用手勢控制：將食指指尖對準氣球以擊破它。", 80, 85);
+  text("2. 目標：找出畫面上方韓文字母對應的正確發音。", 80, 115);
+  text("3. 計分方式：", 80, 145);
+  text("   - 答對：+10 分", 80, 170);
+  text("   - 答錯：-5 分", 80, 195);
+  text("4. 特殊道具：", 80, 225);
+
+  // 道具跳動動畫邏輯
+  let bounce = sin(frameCount * 0.1) * 8; // 計算跳動幅度
+  textSize(26); // 讓圖示稍微大一點
+  text("⏰", 100, 255 + bounce);
+  text("💣", 100, 295 - bounce); // 使用減號讓它交錯跳動
+  textSize(18);
+  text(" (時鐘)：增加 5 秒剩餘時間", 135, 260);
+  text(" (炸彈)：減少 3 秒剩餘時間", 135, 300);
+
+  text("5. 限時挑戰：在 60 秒內盡可能獲得高分！", 80, 335);
+
+  // 溫馨提示
+  fill(255, 255, 0); // 使用黃色提醒
+  textSize(16);
+  // 輕微左右晃動特效：利用 sin 函數計算 X 軸位移
+  let shake = sin(frameCount * 0.15) * 3;
+  text("💡 溫馨提示：手勢辨識可能不夠靈敏，建議盡量將手掌打開以免辯識不到。", 80 + shake, 365);
+
+  textAlign(CENTER, CENTER);
+  // 「開始挑戰」按鈕呼吸燈效果：計算動態透明度
+  let alphaPulse = map(sin(frameCount * 0.08), -1, 1, 150, 255);
+  let pulseColor = color(50, 150, 50, alphaPulse);
+  drawMenuButton(GW / 2 - 60, GH - 80, 120, 50, "開始挑戰", pulseColor);
 }
 
 function drawGame() {
@@ -386,8 +439,8 @@ function checkAnswer(index) {
       playKoreanSound(currentKorean);
       // 紀錄正確答題
       history.push({ kr: currentKorean, en: currentAnswer, correct: true });
-      // 在被撞擊的氣球位置產生星星特效
-      spawnParticles(b.x, b.y, color(255, 255, 0)); 
+      // 在被撞擊的氣球位置產生彩虹星星特效
+      spawnParticles(b.x, b.y); 
       feedbackText = "正確！\n" + currentKorean + " = " + currentAnswer;
       feedbackColor = color(0, 255, 0);
       feedbackTimer = 60; 
@@ -536,6 +589,10 @@ function mousePressed() {
     if (mouseX > GW / 2 + 20 && mouseX < GW / 2 + 120 && mouseY > GH / 2 + 50 && mouseY < GH / 2 + 100) {
       startGame("VOWELS");
     }
+  } else if (gameState === "RULES") {
+    if (mouseX > GW / 2 - 60 && mouseX < GW / 2 + 60 && mouseY > GH - 80 && mouseY < GH - 30) {
+      actuallyStartGame();
+    }
   } else if (gameState === "PLAYING") {
     // 檢查是否點擊右下角的「回主選單」按鈕
     if (mouseX > GW - 120 && mouseX < GW - 10 && mouseY > GH - 50 && mouseY < GH - 10) {
@@ -560,6 +617,10 @@ function mousePressed() {
 function startGame(mode) {
   currentMode = mode;
   activeQuestions = (mode === "CONSONANTS") ? CONSONANTS : VOWELS;
+  gameState = "RULES";
+}
+
+function actuallyStartGame() {
   score = 0;
   history = []; // 清空上一次的紀錄
   gameTimer = 60;
@@ -580,17 +641,19 @@ function playKoreanSound(txt) {
 }
 
 // 新增：產生粒子特效
-function spawnParticles(x, y, col) {
-  for (let i = 0; i < 20; i++) {
+function spawnParticles(x, y) {
+  for (let i = 0; i < 30; i++) {
+    // 為每顆星星產生隨機的彩虹顏色 (RGB 隨機組合)
+    let randomColor = color(random(255), random(255), random(255));
     particles.push({
       x: x,
       y: y,
-      vx: random(-5, 5),
-      vy: random(-5, 5),
-      size: random(5, 12),
-      color: col,
+      vx: random(-7, 7),
+      vy: random(-7, 7),
+      size: random(5, 15),
+      color: randomColor,
       alpha: 255,
-      life: random(30, 60) // 粒子壽命
+      life: random(40, 80) // 粒子壽命
     });
   }
 }
