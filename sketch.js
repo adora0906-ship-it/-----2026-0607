@@ -15,7 +15,7 @@ let isFirstDetection = true; // 用於平滑處理初始位置
 let isModelReady = false;
 let bgImg;   // 統一的韓國背景圖
 let gameState = "START"; // START, RULES, PLAYING, GAMEOVER
-let gameTimer = 60; // 遊戲時長
+let gameTimer = 45; // 遊戲時長
 let lastTimeCheck = 0;
 let currentMode = ""; // CONSONANTS, VOWELS
 let isPaused = false; // 暫停狀態
@@ -178,7 +178,7 @@ function drawRulesScreen() {
   text(" (時鐘)：增加 5 秒剩餘時間", 135, 260);
   text(" (炸彈)：減少 3 秒剩餘時間", 135, 300);
 
-  text("5. 限時挑戰：在 60 秒內盡可能獲得高分！", 80, 335);
+  text("5. 限時挑戰：在 45 秒內盡可能獲得高分！", 80, 335);
 
   // 溫馨提示
   fill(255, 255, 0); // 使用黃色提醒
@@ -623,7 +623,7 @@ function startGame(mode) {
 function actuallyStartGame() {
   score = 0;
   history = []; // 清空上一次的紀錄
-  gameTimer = 60;
+  gameTimer = 45;
   lastTimeCheck = millis();
   isPaused = false;
   gameState = "PLAYING";
